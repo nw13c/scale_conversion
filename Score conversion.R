@@ -1,4 +1,7 @@
-
+# I tried two methods to create score conversion tables for TOD project using simulated data. These two methods both work well and end up with comparable
+#reuslts. In Method 1, I used the Based R bulid-in function (aggregate()) to get all the possible combinations between the standard score (SS) and age 
+# (age_range). In Method 2, I used ifelse() to manually list all the possible combinations. So, from this perspective, I think the Method 1 wins but Method 2 
+# can be a good back up plan.
 ############################################### Method 1: Code to create score conversion tables   ####################################
 # simulate some data
 scale_a <- data.frame(age_range = c(rep("5.0-5.3",7),rep("6.0-6.3",2),"6.4-6.7"),
@@ -20,7 +23,7 @@ scale_c <- data.frame(age_range = c(rep("5.0-5.3",7),rep("6.0-6.3",2),"6.4-6.7")
 scale <- list(scale_a, scale_b, scale_c)
 names(scale) <- c("a", "b", "c")
 
-# write my personal function to find get the range for all kids of possible combinations between with age_range and ss (standard score)
+# write my personal function to find the range for all kids of possible combinations between with age_range and ss (standard score)
 f <- function(x){
   raw_min <- min(na.omit(x)) # find the min value 
   raw_max <- max(na.omit(x)) # find the max value
@@ -51,21 +54,22 @@ scale_convert_bind_wide <- reshape2::dcast(scale_convert_bind,formula = ss ~ age
 sss <- c("5.0-5.3", "6.0-6.3","6.4-6.7")
 scale_convert_bind_wide_new <- lapply(setNames(sss,sss), function(x) scale_convert_bind_wide[, grep(x, colnames(scale_convert_bind_wide))])
 
-# add the common column (ss) to each list elements (age range)
+# add the common column (ss) back to each list elements (age range)
 l2 <- lapply(scale_convert_bind_wide_new, function(x) 
   cbind(ss = scale_convert_bind_wide$ss,x))
 
 # respecify the name of list elements
 new.names <-c("ss","a", "b", "c")
-# apply the new name to the list
-new_try <- lapply(l2, setNames, new.names)
+             
+# assign the new name to the list
+new_1 <- lapply(l2, setNames, new.names)
 
 # write list output into the same excel with multiple sheets
-writexl::write_xlsx(new_try, "method1.xlsx")
+writexl::write_xlsx(new_1, "method1.xlsx")
 #################################################### End of code (Method 1) ######################################################
 
 ############################################### Method 2: Code to create score conversion tables  #################################
-# simulate some data to play with
+# simulate some data to play with (the same as those used in Method 1)
 scale_a <- data.frame(age_range = c(rep("5.0-5.3",7),rep("6.0-6.3",2),"6.4-6.7"),
                       ss = c(128,129,rep(130,5),132,132,133),
                       raw = c('NA',12,rep(20:24),23,27,'NA')
@@ -114,7 +118,7 @@ convert <- function(x){
   return(reshape(unique(x[,-3]), idvar = "ss", timevar = "age_range", v.names=" ", direction="wide"))
 }
 
-# put the data into the function 
+# apply the function to the data
 scale_convert2 <- lapply(scale,convert)
 
 # combine the list elements into a dataframe (unordered)
@@ -122,28 +126,30 @@ scale_convert2_new <- do.call("rbind", scale_convert2)
 
 # put the scale information into the above data
 scale_convert2_new[["scales"]] <- rep(names(scale_convert2), sapply(scale_convert2, nrow))
+             
 # remove the column name
 rownames(scale_convert2_new) <- NULL
+             
 # put the above data into wide format
-new2 <- reshape(scale_convert2_new,idvar=c("ss"),v.names = c(" .5.0-5.3"," .6.0-6.3"," .6.4-6.7"),timevar = "scales",direction="wide")
-new2_order <- new2[order(new2$ss),] 
+scale_convert2_wide <- reshape(scale_convert2_new,idvar=c("ss"),v.names = c(" .5.0-5.3"," .6.0-6.3"," .6.4-6.7"),timevar = "scales",direction="wide")
+scale_convert2_wide_order <- scale_convert2_wide[order(scale_convert2_wide$ss),] 
 
 # split the data based on the age-range
-new2_new2 <- sapply(c(" .5.0-5.3", " .6.0-6.3"," .6.4-6.7"),
-                    function(x) new2_order[startsWith(names(new2_order),x)],
+scale_convert2_wide_new  <- sapply(c(" .5.0-5.3", " .6.0-6.3"," .6.4-6.7"),
+                    function(x) scale_convert2_wide_order[startsWith(names(scale_convert2_wide_order),x)],
                     simplify = FALSE)
 
 # add the common column (ss) to each list elements (age range)
-l2_method <- lapply(new2_new2, function(x) 
-  cbind(ss = new2_order$ss,x))
+l2_method <- lapply(scale_convert2_wide_new, function(x) 
+  cbind(ss = scale_convert2_wide_order$ss,x))
 
 # respecify the name of list elements
 new.names <-c("ss","a", "b", "c")
-# apply the new name to the list
-new2_new2_new2 <- lapply(l2_method , setNames, new.names)
-
+                    
+# assign the new name to the list
+new_2<- lapply(l2_method , setNames, new.names)
 
 # write list output into the same excel with multiple sheets
-writexl::write_xlsx(new2_new2_new2, "method2.xlsx")
+writexl::write_xlsx(new_2, "method2.xlsx")
 
 #################################################### End of code (Method 2) ##################################################################
